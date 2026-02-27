@@ -1,27 +1,70 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { authApi, mealsApi, emailApi } from "./services/api";
 
 /* ═══════════════════════════════════════════════════
    CONSTANTS
    ═══════════════════════════════════════════════════ */
 
-const RESTRICTIONS = ["Halal", "No Pork", "Vegetarian", "Pescatarian", "Low Carb", "Keto", "Gluten Free", "Dairy Free"];
-const ALLERGIES = ["Nuts", "Shellfish", "Eggs", "Soy", "Fish", "Sesame"];
+const RESTRICTIONS = [
+  { label: "Halal", emoji: "🕌" },
+  { label: "No Pork", emoji: "🚫" },
+  { label: "Vegetarian", emoji: "🥬" },
+  { label: "Pescatarian", emoji: "🐟" },
+  { label: "Low Carb", emoji: "🥩" },
+  { label: "Keto", emoji: "🥑" },
+  { label: "Gluten Free", emoji: "🌾" },
+  { label: "Dairy Free", emoji: "🥛" },
+];
+const ALLERGIES = [
+  { label: "Nuts", emoji: "🥜" },
+  { label: "Shellfish", emoji: "🦐" },
+  { label: "Eggs", emoji: "🥚" },
+  { label: "Soy", emoji: "🌱" },
+];
 const GOALS = [
-  { id: "lose", label: "Lose Weight", desc: "Calorie deficit with high protein" },
-  { id: "gain", label: "Build Muscle", desc: "Calorie surplus with macro targets" },
-  { id: "maintain", label: "Stay Healthy", desc: "Balanced nutrition & energy" },
-  { id: "energy", label: "Boost Energy", desc: "Sustained fuel for long workdays" },
+  { id: "lose", label: "Lose Weight", desc: "Calorie deficit with balanced macros", emoji: "🏃‍♀️" },
+  { id: "gain", label: "Build Muscle", desc: "High protein, caloric surplus", emoji: "💪" },
+  { id: "maintain", label: "Stay Healthy", desc: "Balanced nutrition maintenance", emoji: "🌿" },
+  { id: "energy", label: "Boost Energy", desc: "Complex carbs and steady fuel", emoji: "⚡" },
 ];
 const ACTIVITY = ["Sedentary", "Lightly Active", "Moderately Active", "Very Active"];
-const BUDGETS = ["Budget Friendly", "Moderate", "Flexible"];
-const PREP_DAYS = ["Saturday", "Sunday", "Wednesday", "Both Weekend Days"];
-const CUISINES = ["Traditional Nigerian", "Modern Fusion", "Northern Nigerian", "Southern Nigerian"];
+const BUDGETS = [
+  { label: "Budget Friendly", emoji: "🪙" },
+  { label: "Moderate", emoji: "💳" },
+  { label: "Flexible", emoji: "💎" },
+];
+const PREP_DAYS = [
+  { label: "Saturday", emoji: "📅" },
+  { label: "Sunday", emoji: "📅" },
+  { label: "Wednesday", emoji: "📅" },
+  { label: "Both Weekend Days", emoji: "📅" },
+];
+const CUISINES = [
+  { label: "Traditional", full: "Traditional Nigerian", emoji: "🍲" },
+  { label: "Modern Fusion", full: "Modern Fusion", emoji: "✨" },
+  { label: "Northern", full: "Northern Nigerian", emoji: "🌍" },
+  { label: "Southern", full: "Southern Nigerian", emoji: "🌊" },
+];
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+const DAY_SHORT = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+const MEAL_EMOJIS = {
+  Breakfast: "🍳", Lunch: "🍛", Dinner: "🍲", Snack: "🍿",
+  "7:00 AM": "🍳", "12:30 PM": "🌾", "4:00 PM": "🍿", "7:00 PM": "🍲",
+};
+
+const GROCERY_EMOJIS = {
+  "Proteins": "🥩",
+  "Grains & Starches": "🌾",
+  "Vegetables & Greens": "🥬",
+  "Oils & Seasonings": "🫒",
+  "Soup Essentials": "🍜",
+  "Snacks & Extras": "🍬",
+};
 
 
 /* ═══════════════════════════════════════════════════
-   ONBOARDING SCREEN
+   ONBOARDING
    ═══════════════════════════════════════════════════ */
 
 function Onboarding({ onComplete }) {
@@ -58,177 +101,174 @@ function Onboarding({ onComplete }) {
       const { data } = await authApi.signup(f);
       onComplete(data.user, data.profile);
     } catch (err) {
-      const msg = err.response?.data?.error || "Something went wrong";
-      setError(msg);
+      setError(err.response?.data?.error || "Something went wrong");
       setLoading(false);
     }
   };
 
+  const stepLabels = ["Account", "Dietary", "Fitness", "Schedule"];
+
   const steps = [
-    // Step 0: Account info
+    // Step 0: Account
     <div key="s0" className="fade-up">
-      <div style={{ textAlign: "center", marginBottom: 32 }}>
-        <div style={{ fontSize: 48, marginBottom: 12, animation: "float 3s ease-in-out infinite" }}>🍲</div>
-        <h1 className="serif" style={{ fontSize: 28, marginBottom: 6 }}>Let's build your meal plan</h1>
-        <p style={{ color: "var(--stone)", fontSize: 15, lineHeight: 1.5, maxWidth: 380, margin: "0 auto" }}>
-          AI-optimized Nigerian meals tailored to your goals, schedule, and taste.
-        </p>
-      </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      <h2 className="serif step-title">Account</h2>
+      <p className="step-subtitle">Let's get to know you</p>
+      <div className="form-stack">
         <div>
-          <label className="label">Your first name</label>
-          <input className="input" placeholder="Adaeze" value={f.name} onChange={(e) => update("name", e.target.value)} />
+          <label className="label">Your Name</label>
+          <input className="input" placeholder="e.g. Adaeze" value={f.name} onChange={(e) => update("name", e.target.value)} />
         </div>
         <div>
-          <label className="label">Email address</label>
-          <input className="input" type="email" placeholder="you@company.com" value={f.email} onChange={(e) => update("email", e.target.value)} />
+          <label className="label">Email Address</label>
+          <input className="input" type="email" placeholder="adaeze@email.com" value={f.email} onChange={(e) => update("email", e.target.value)} />
         </div>
         <div>
           <label className="label">Password</label>
-          <input className="input" type="password" placeholder="At least 6 characters" value={f.password} onChange={(e) => update("password", e.target.value)} />
+          <input className="input" type="password" placeholder="6+ characters" value={f.password} onChange={(e) => update("password", e.target.value)} />
         </div>
       </div>
     </div>,
 
-    // Step 1: Dietary preferences
+    // Step 1: Dietary
     <div key="s1" className="fade-up">
-      <h2 className="serif" style={{ fontSize: 24, marginBottom: 4 }}>Dietary preferences</h2>
-      <p style={{ color: "var(--stone)", fontSize: 14, marginBottom: 24 }}>We'll make sure every meal respects your needs</p>
-      <label className="label">Restrictions</label>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 22 }}>
+      <h2 className="serif step-title">Dietary</h2>
+      <p className="step-subtitle">What do you eat?</p>
+      <label className="label">Dietary Restrictions</label>
+      <div className="chip-grid">
         {RESTRICTIONS.map((r) => (
-          <div key={r} className={`chip ${f.dietaryRestrictions.includes(r) ? "active" : ""}`} onClick={() => toggle("dietaryRestrictions", r)}>
-            {f.dietaryRestrictions.includes(r) && "✓ "}{r}
+          <div key={r.label} className={`chip-emoji ${f.dietaryRestrictions.includes(r.label) ? "active" : ""}`} onClick={() => toggle("dietaryRestrictions", r.label)}>
+            <span className="chip-icon">{r.emoji}</span>{r.label}
           </div>
         ))}
       </div>
-      <label className="label">Allergies</label>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 22 }}>
+      <label className="label" style={{ marginTop: 20 }}>Allergies</label>
+      <div className="chip-grid">
         {ALLERGIES.map((a) => (
-          <div key={a} className={`chip ${f.allergies.includes(a) ? "active" : ""}`} onClick={() => toggle("allergies", a)}>
-            {f.allergies.includes(a) && "✓ "}{a}
+          <div key={a.label} className={`chip-emoji ${f.allergies.includes(a.label) ? "active" : ""}`} onClick={() => toggle("allergies", a.label)}>
+            <span className="chip-icon">{a.emoji}</span>{a.label}
           </div>
         ))}
       </div>
-      <label className="label">Cuisine style</label>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+      <label className="label" style={{ marginTop: 20 }}>Cuisine Preference</label>
+      <div className="chip-grid">
         {CUISINES.map((c) => (
-          <div key={c} className={`chip ${f.preferredCuisine.includes(c) ? "active" : ""}`} onClick={() => toggle("preferredCuisine", c)}>
-            {f.preferredCuisine.includes(c) && "✓ "}{c}
+          <div key={c.label} className={`chip-emoji ${f.preferredCuisine.includes(c.full) ? "active" : ""}`} onClick={() => toggle("preferredCuisine", c.full)}>
+            <span className="chip-icon">{c.emoji}</span>{c.label}
           </div>
         ))}
       </div>
     </div>,
 
-    // Step 2: Fitness goals
+    // Step 2: Fitness
     <div key="s2" className="fade-up">
-      <h2 className="serif" style={{ fontSize: 24, marginBottom: 4 }}>Your fitness goal</h2>
-      <p style={{ color: "var(--stone)", fontSize: 14, marginBottom: 24 }}>This shapes your portions and calorie targets</p>
-      <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 24 }}>
+      <h2 className="serif step-title">Fitness</h2>
+      <p className="step-subtitle">What's your goal?</p>
+      <div className="goal-grid">
         {GOALS.map((g) => (
-          <div key={g.id} className={`option-card ${f.fitnessGoal === g.label ? "active" : ""}`} onClick={() => update("fitnessGoal", g.label)}>
-            <div>
-              <div style={{ fontSize: 15, fontWeight: 600 }}>{g.label}</div>
-              <div style={{ fontSize: 12, color: "var(--stone)" }}>{g.desc}</div>
-            </div>
-            {f.fitnessGoal === g.label && <span style={{ color: "var(--terra)", fontSize: 18 }}>✓</span>}
+          <div key={g.id} className={`goal-card ${f.fitnessGoal === g.label ? "active" : ""}`} onClick={() => update("fitnessGoal", g.label)}>
+            <span className="goal-emoji">{g.emoji}</span>
+            <div className="goal-label">{g.label}</div>
+            <div className="goal-desc">{g.desc}</div>
           </div>
         ))}
       </div>
-      <label className="label">Activity level</label>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+      <label className="label" style={{ marginTop: 20 }}>Activity Level</label>
+      <div className="chip-grid">
         {ACTIVITY.map((a) => (
-          <div key={a} className={`chip ${f.activityLevel === a ? "active" : ""}`} onClick={() => update("activityLevel", a)}>{a}</div>
+          <div key={a} className={`chip-emoji ${f.activityLevel === a ? "active" : ""}`} onClick={() => update("activityLevel", a)}>{a}</div>
         ))}
       </div>
     </div>,
 
     // Step 3: Schedule
     <div key="s3" className="fade-up">
-      <h2 className="serif" style={{ fontSize: 24, marginBottom: 4 }}>Your weekly schedule</h2>
-      <p style={{ color: "var(--stone)", fontSize: 14, marginBottom: 24 }}>We'll optimize prep around your availability</p>
+      <h2 className="serif step-title">Schedule</h2>
+      <p className="step-subtitle">When do you cook?</p>
       <label className="label">Meals per day</label>
-      <div style={{ display: "flex", gap: 8, marginBottom: 22 }}>
+      <div className="meals-number-row">
         {[2, 3, 4, 5].map((n) => (
-          <div key={n} className={`chip ${f.mealsPerDay === n ? "active" : ""}`} style={{ minWidth: 50, justifyContent: "center" }} onClick={() => update("mealsPerDay", n)}>{n}</div>
+          <div key={n} className={`meals-number ${f.mealsPerDay === n ? "active" : ""}`} onClick={() => update("mealsPerDay", n)}>{n}</div>
         ))}
       </div>
-      <label className="label">Prep days</label>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 22 }}>
+      <label className="label" style={{ marginTop: 20 }}>Prep Days</label>
+      <div className="chip-grid">
         {PREP_DAYS.map((d) => (
-          <div key={d} className={`chip ${f.prepDays.includes(d) ? "active" : ""}`} onClick={() => toggle("prepDays", d)}>
-            {f.prepDays.includes(d) && "✓ "}{d}
+          <div key={d.label} className={`chip-emoji ${f.prepDays.includes(d.label) ? "active" : ""}`} onClick={() => toggle("prepDays", d.label)}>
+            <span className="chip-icon">{d.emoji}</span>{d.label}
           </div>
         ))}
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 22 }}>
-        <div>
-          <label className="label">Wake-up time</label>
-          <input className="input" type="time" value={f.wakeTime} onChange={(e) => update("wakeTime", e.target.value)} />
-        </div>
-        <div>
-          <label className="label">Lunch break</label>
-          <select className="input" value={f.lunchBreak} onChange={(e) => update("lunchBreak", e.target.value)}>
-            <option value="15">15 minutes</option>
-            <option value="30">30 minutes</option>
-            <option value="45">45 minutes</option>
-            <option value="60">60 minutes</option>
-          </select>
-        </div>
-      </div>
-      <label className="label">Weekly budget</label>
-      <div style={{ display: "flex", gap: 8 }}>
+      <label className="label" style={{ marginTop: 20 }}>Weekly Budget</label>
+      <div className="chip-grid">
         {BUDGETS.map((b) => (
-          <div key={b} className={`chip ${f.budget === b ? "active" : ""}`} onClick={() => update("budget", b)}>{b}</div>
+          <div key={b.label} className={`chip-emoji ${f.budget === b.label ? "active" : ""}`} onClick={() => update("budget", b.label)}>
+            <span className="chip-icon">{b.emoji}</span>{b.label}
+          </div>
         ))}
       </div>
     </div>,
   ];
 
   return (
-    <div style={{ maxWidth: 860, margin: "0 auto", padding: "0 20px" }}>
-      <div style={{ paddingTop: 28, display: "flex", justifyContent: "center" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ width: 48, height: 48, borderRadius: 14, background: "linear-gradient(135deg, var(--terra), var(--terra-dark))", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <span style={{ fontSize: 22 }}>🍲</span>
-          </div>
-          <div>
-            <div className="serif" style={{ fontSize: 28, lineHeight: 1.1 }}>NaijaPrep</div>
-            <div style={{ fontSize: 12, color: "var(--stone)", fontWeight: 500 }}>AI Meal Planning for Professionals</div>
+    <div className="onboarding-layout">
+      {/* Left: Food Photo */}
+      <div className="onboarding-left" style={{ backgroundImage: "url(/onboarding-bg.jpg)" }}>
+        <div className="onboarding-left-overlay">
+          <div className="onboarding-left-content">
+            <h1 className="serif onboarding-brand">NaijaPrep</h1>
+            <p className="onboarding-tagline">
+              Your AI-powered kitchen companion for authentic Nigerian meal planning. Eat well, save time, stay healthy.
+            </p>
+            <div className="onboarding-stats">
+              <div className="onboarding-stat">
+                <div className="onboarding-stat-value">28+</div>
+                <div className="onboarding-stat-label">Nigerian Dishes</div>
+              </div>
+              <div className="onboarding-stat">
+                <div className="onboarding-stat-value">7</div>
+                <div className="onboarding-stat-label">Day Plans</div>
+              </div>
+              <div className="onboarding-stat">
+                <div className="onboarding-stat-value">AI</div>
+                <div className="onboarding-stat-label">Powered</div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Step dots */}
-      <div style={{ display: "flex", justifyContent: "center", gap: 6, margin: "20px 0 24px" }}>
-        {[0, 1, 2, 3].map((i) => (
-          <div key={i} style={{ width: i === step ? 28 : 8, height: 8, borderRadius: 4, background: i < step ? "var(--forest)" : i === step ? "var(--terra)" : "var(--sand)", transition: "all .3s" }} />
-        ))}
-      </div>
-
-      <div className="card" style={{ padding: "32px 28px", marginBottom: 40 }}>
-        {steps[step]}
-
-        {error && (
-          <div style={{ marginTop: 16, padding: "12px 16px", borderRadius: "var(--radius-xs)", background: "var(--amber-light)", color: "#8B6914", fontSize: 13 }}>
-            {error}
+      {/* Right: Form */}
+      <div className="onboarding-right">
+        <div className="onboarding-form-container">
+          {/* Progress bar */}
+          <div className="step-progress">
+            {stepLabels.map((label, i) => (
+              <div key={label} className="step-progress-item">
+                <div className={`step-progress-bar ${i <= step ? "filled" : ""}`} />
+                <span className={`step-progress-label ${i === step ? "current" : ""}`}>{label}</span>
+              </div>
+            ))}
           </div>
-        )}
 
-        <div style={{ display: "flex", gap: 10, marginTop: 28 }}>
-          {step > 0 && (
-            <button className="btn-ghost" style={{ padding: "12px 20px" }} onClick={() => setStep((s) => s - 1)}>
-              ← Back
+          {/* Step content */}
+          <div className="step-content">{steps[step]}</div>
+
+          {/* Error */}
+          {error && <div className="error-banner">{error}</div>}
+
+          {/* Buttons */}
+          <div className="step-buttons">
+            {step > 0 && (
+              <button className="btn-back" onClick={() => setStep((s) => s - 1)}>‹ Back</button>
+            )}
+            <button
+              className={step === 3 ? "btn-generate" : "btn-next"}
+              disabled={!valid() || loading}
+              onClick={() => (step === 3 ? handleSubmit() : setStep((s) => s + 1))}
+            >
+              {loading ? "Creating..." : step === 3 ? "Generate My Plan ✦" : "Next ›"}
             </button>
-          )}
-          <button
-            className="btn-primary"
-            style={{ flex: 1 }}
-            disabled={!valid() || loading}
-            onClick={() => (step === 3 ? handleSubmit() : setStep((s) => s + 1))}
-          >
-            {loading ? "Creating account..." : step === 3 ? "Generate My Plan →" : "Continue →"}
-          </button>
+          </div>
         </div>
       </div>
     </div>
@@ -251,28 +291,28 @@ function LoadingScreen({ name }) {
     { emoji: "✨", text: "Finalizing your plan..." },
   ];
 
-  useState(() => {
+  useEffect(() => {
     const i = setInterval(() => setIdx((p) => Math.min(p + 1, msgs.length - 1)), 2200);
     return () => clearInterval(i);
-  });
+  }, []);
 
   return (
-    <div style={{ maxWidth: 860, margin: "0 auto", padding: "0 20px", display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh" }}>
-      <div className="card scale-in" style={{ padding: "56px 40px", textAlign: "center", maxWidth: 420, width: "100%" }}>
-        <div style={{ fontSize: 56, animation: "cookPot 1s ease-in-out infinite", display: "inline-block", marginBottom: 28 }}>🍲</div>
+    <div className="loading-screen">
+      <div className="loading-card scale-in">
+        <div className="loading-pot">🍲</div>
         <h2 className="serif" style={{ fontSize: 24, marginBottom: 8 }}>Cooking up your plan{name ? `, ${name}` : ""}...</h2>
-        <div style={{ display: "flex", flexDirection: "column", gap: 0, marginTop: 28, textAlign: "left" }}>
+        <div className="loading-steps">
           {msgs.map((m, i) => (
-            <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", opacity: i <= idx ? 1 : 0.25, transition: "opacity .4s" }}>
-              <span style={{ fontSize: 18, width: 28, textAlign: "center" }}>{m.emoji}</span>
-              <span style={{ fontSize: 14, color: i <= idx ? "var(--charcoal)" : "var(--stone)", fontWeight: i === idx ? 600 : 400 }}>{m.text}</span>
-              {i < idx && <span style={{ marginLeft: "auto", color: "var(--forest)" }}>✓</span>}
-              {i === idx && <span style={{ marginLeft: "auto", color: "var(--terra)", animation: "spin 1s linear infinite", display: "inline-block" }}>⟳</span>}
+            <div key={i} className={`loading-step ${i <= idx ? "visible" : ""} ${i === idx ? "current" : ""}`}>
+              <span className="loading-step-emoji">{m.emoji}</span>
+              <span className="loading-step-text">{m.text}</span>
+              {i < idx && <span className="loading-check">✓</span>}
+              {i === idx && <span className="loading-spinner">⟳</span>}
             </div>
           ))}
         </div>
-        <div style={{ height: 4, background: "var(--sand)", borderRadius: 2, marginTop: 24, overflow: "hidden" }}>
-          <div style={{ height: "100%", borderRadius: 2, background: "linear-gradient(90deg, var(--terra), var(--forest))", width: `${Math.min(((idx + 1) / msgs.length) * 100, 95)}%`, transition: "width .8s ease" }} />
+        <div className="loading-bar">
+          <div className="loading-bar-fill" style={{ width: `${Math.min(((idx + 1) / msgs.length) * 100, 95)}%` }} />
         </div>
       </div>
     </div>
@@ -284,9 +324,10 @@ function LoadingScreen({ name }) {
    DASHBOARD
    ═══════════════════════════════════════════════════ */
 
-function Dashboard({ data, user, profile, onRegenerate, onSendEmail, emailStatus }) {
+function Dashboard({ data, user, profile, onRegenerate, onSendEmail, emailStatus, onLogout }) {
   const [tab, setTab] = useState("meals");
-  const [day, setDay] = useState("Monday");
+  const [dayIdx, setDayIdx] = useState(0);
+  const day = DAYS[dayIdx];
 
   const meals = data.plan?.[day] || [];
   const totals = meals.reduce(
@@ -295,224 +336,229 @@ function Dashboard({ data, user, profile, onRegenerate, onSendEmail, emailStatus
   );
   const maxCal = data.dailyCals || 2200;
 
+  // Count total grocery items
+  const allGroceryItems = Object.values(data.grocery || {}).flat();
+  const [checkedItems, setCheckedItems] = useState({});
+  const checkedCount = Object.values(checkedItems).filter(Boolean).length;
+
+  const toggleGrocery = (item) => {
+    setCheckedItems((prev) => ({ ...prev, [item]: !prev[item] }));
+  };
+
   return (
-    <div style={{ maxWidth: 860, margin: "0 auto", padding: "0 20px", minHeight: "100vh" }}>
-      {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "20px 0 16px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-          <div style={{ width: 38, height: 38, borderRadius: 11, background: "linear-gradient(135deg, var(--terra), var(--terra-dark))", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <span style={{ fontSize: 17 }}>🍲</span>
-          </div>
-          <span className="serif" style={{ fontSize: 21 }}>NaijaPrep</span>
+    <div className="dashboard">
+      {/* Navbar */}
+      <nav className="navbar">
+        <div className="nav-brand">
+          <span className="nav-logo">🍲</span>
+          <span className="serif nav-title">NaijaPrep</span>
         </div>
-        <button className="btn-ghost" onClick={onRegenerate}>⟳ Regenerate</button>
-      </div>
+        <div className="nav-actions">
+          <button className="nav-btn" onClick={onSendEmail} disabled={emailStatus === "sending"}>
+            ✉️ {emailStatus === "sent" ? "Sent!" : "Send Plan"}
+          </button>
+          <button className="nav-btn" onClick={onRegenerate}>🔄 Regenerate</button>
+          <button className="nav-btn-icon" onClick={onLogout} title="Sign out">⎋</button>
+        </div>
+      </nav>
 
       {/* Hero */}
-      <div className="fade-up" style={{ padding: "28px 28px 24px", borderRadius: "var(--radius)", background: "linear-gradient(135deg, #C4633F 0%, #9E4A2A 40%, #1B4332 100%)", color: "white", marginBottom: 14 }}>
-        <p style={{ fontSize: 14, opacity: 0.8, marginBottom: 4 }}>Welcome back,</p>
-        <h1 className="serif" style={{ fontSize: 28, marginBottom: 6 }}>{user.name} 👋</h1>
-        <p style={{ fontSize: 13, opacity: 0.75, marginBottom: 20 }}>
-          {profile.fitnessGoal} plan · {profile.mealsPerDay} meals/day · {profile.activityLevel}
-        </p>
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+      <div className="hero" style={{ backgroundImage: "url(/hero-food.jpg)" }}>
+        <div className="hero-overlay">
+          <p className="hero-welcome">Welcome back, {user.name} 👋</p>
+          <h1 className="serif hero-title">Your Weekly Meal Plan</h1>
+          <p className="hero-meta">{profile.fitnessGoal} · {profile.mealsPerDay} meals/day</p>
+          <div className="hero-stats">
+            <div className="stat-card">
+              <div className="stat-label"><span className="stat-emoji">🎯</span> Daily Target</div>
+              <div className="stat-value">{maxCal}</div>
+              <div className="stat-unit">kcal</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-label"><span className="stat-emoji">🔥</span> {day}</div>
+              <div className="stat-value">{totals.cal}</div>
+              <div className="stat-progress-bar">
+                <div className="stat-progress-fill" style={{ width: `${Math.min((totals.cal / maxCal) * 100, 100)}%` }} />
+              </div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-label"><span className="stat-emoji">🌿</span> Protein</div>
+              <div className="stat-value">{totals.protein}g</div>
+              <div className="stat-unit">today</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="dash-content">
+        {/* Weekly tip */}
+        {data.weeklyTip && (
+          <div className="tip-card fade-up">
+            <span className="tip-emoji">💡</span>
+            <p className="tip-text">{data.weeklyTip}</p>
+          </div>
+        )}
+
+        {/* Tabs */}
+        <div className="tab-bar fade-up">
           {[
-            { label: "Daily Target", val: `${maxCal} kcal` },
-            { label: "Today's Total", val: `${totals.cal} kcal` },
-            { label: "Protein", val: `${totals.protein}g` },
-          ].map((s) => (
-            <div key={s.label} style={{ background: "rgba(255,255,255,.12)", borderRadius: 11, padding: "12px 16px", minWidth: 110 }}>
-              <div style={{ fontSize: 11, opacity: 0.7, marginBottom: 3 }}>{s.label}</div>
-              <div style={{ fontSize: 18, fontWeight: 700 }}>{s.val}</div>
-            </div>
+            { id: "meals", label: "Meal Plan", emoji: "📋" },
+            { id: "grocery", label: "Grocery List", emoji: "🛒" },
+            { id: "prep", label: "Prep Schedule", emoji: "⏰" },
+          ].map((t) => (
+            <button key={t.id} className={`tab ${tab === t.id ? "active" : ""}`} onClick={() => setTab(t.id)}>
+              <span className="tab-emoji">{t.emoji}</span> {t.label}
+            </button>
           ))}
         </div>
-      </div>
 
-      {/* Email CTA */}
-      <div className="card fade-up stagger-1" style={{ padding: "16px 20px", marginBottom: 14, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ width: 40, height: 40, borderRadius: 11, background: "var(--terra-light)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>✉️</div>
-          <div>
-            <div style={{ fontSize: 14, fontWeight: 600 }}>Get this plan in your inbox</div>
-            <div style={{ fontSize: 12, color: "var(--stone)" }}>Meal plan + grocery list → {user.email}</div>
-          </div>
-        </div>
-        <button className="btn-primary" style={{ width: "auto", padding: "11px 22px", fontSize: 13 }} onClick={onSendEmail} disabled={emailStatus === "sending"}>
-          {emailStatus === "sending" ? "Sending..." : emailStatus === "sent" ? "✓ Sent!" : emailStatus === "error" ? "Retry" : "Send Plan →"}
-        </button>
-      </div>
-
-      {emailStatus === "sent" && (
-        <div className="fade-up" style={{ display: "flex", alignItems: "center", gap: 10, padding: "13px 18px", borderRadius: "var(--radius-sm)", background: "var(--forest-light)", border: "1px solid rgba(27,67,50,.15)", marginBottom: 14, fontSize: 13, color: "var(--forest)" }}>
-          ✓ Meal plan delivered to <strong>{user.email}</strong>
-        </div>
-      )}
-
-      {/* Weekly tip */}
-      {data.weeklyTip && (
-        <div className="card-flat fade-up stagger-2" style={{ padding: "14px 18px", marginBottom: 14, display: "flex", alignItems: "flex-start", gap: 10 }}>
-          <span style={{ fontSize: 16 }}>💡</span>
-          <p style={{ fontSize: 13, lineHeight: 1.5 }}><strong>Tip of the week:</strong> {data.weeklyTip}</p>
-        </div>
-      )}
-
-      {/* Tabs */}
-      <div className="tab-bar fade-up stagger-3" style={{ marginBottom: 18 }}>
-        {["meals", "grocery", "prep"].map((t) => (
-          <button key={t} className={`tab ${tab === t ? "active" : ""}`} onClick={() => setTab(t)}>
-            {t === "meals" ? "Meal Plan" : t === "grocery" ? "Grocery List" : "Prep Schedule"}
-          </button>
-        ))}
-      </div>
-
-      {/* Meals Tab */}
-      {tab === "meals" && (
-        <div className="fade-up">
-          <div className="scroll-hide" style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 14 }}>
-            {DAYS.map((d) => (
-              <button key={d} className={`day-pill ${day === d ? "active" : ""}`} onClick={() => setDay(d)}>{d.slice(0, 3)}</button>
-            ))}
-          </div>
-
-          {/* Macro bar */}
-          <div className="card-flat" style={{ padding: "16px 18px", marginBottom: 14 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
-              <span style={{ fontSize: 13, fontWeight: 600 }}>{day}'s macros</span>
-              <span style={{ fontSize: 12, color: "var(--stone)" }}>{totals.cal} / {maxCal} kcal</span>
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
-              {[
-                { label: "Protein", val: totals.protein, max: Math.round(maxCal * 0.3 / 4), color: "var(--forest)" },
-                { label: "Carbs", val: totals.carbs, max: Math.round(maxCal * 0.4 / 4), color: "var(--terra)" },
-                { label: "Fat", val: totals.fat, max: Math.round(maxCal * 0.3 / 9), color: "var(--amber)" },
-              ].map((m) => (
-                <div key={m.label}>
-                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
-                    <span style={{ fontSize: 11, color: "var(--stone)", fontWeight: 600 }}>{m.label}</span>
-                    <span style={{ fontSize: 11, fontWeight: 600, color: m.color }}>{m.val}g</span>
-                  </div>
-                  <div className="macro-bar">
-                    <div className="macro-fill" style={{ width: `${Math.min((m.val / m.max) * 100, 100)}%`, background: m.color }} />
-                  </div>
-                </div>
+        {/* ── Meals Tab ── */}
+        {tab === "meals" && (
+          <div className="fade-up">
+            <div className="day-pills">
+              {DAYS.map((d, i) => (
+                <button key={d} className={`day-pill ${dayIdx === i ? "active" : ""}`} onClick={() => setDayIdx(i)}>
+                  <span className="day-pill-name">{DAY_SHORT[i]}</span>
+                  <span className="day-pill-num">{i + 1}</span>
+                </button>
               ))}
             </div>
-          </div>
 
-          {/* Meal cards */}
-          {meals.map((meal, i) => (
-            <div key={i} className={`card fade-up stagger-${Math.min(i + 1, 5)}`} style={{ padding: "20px 22px", marginBottom: 10 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "1.2px", color: "var(--terra)" }}>{meal.time}</span>
-                {meal.prep && <span style={{ fontSize: 11, color: "var(--stone)" }}>⏱ {meal.prep}</span>}
-              </div>
-              <h3 className="serif" style={{ fontSize: 18, marginBottom: 3, lineHeight: 1.3 }}>{meal.name}</h3>
-              <p style={{ fontSize: 13, color: "var(--stone)", lineHeight: 1.4, marginBottom: 10 }}>{meal.desc}</p>
-              <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
-                {[
-                  { label: "kcal", val: meal.cal, color: "var(--charcoal)" },
-                  { label: "protein", val: `${meal.protein}g`, color: "var(--forest)" },
-                  { label: "carbs", val: `${meal.carbs}g`, color: "var(--terra)" },
-                  { label: "fat", val: `${meal.fat}g`, color: "var(--amber)" },
-                ].map((m) => (
-                  <div key={m.label} style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                    <div style={{ width: 6, height: 6, borderRadius: 3, background: m.color }} />
-                    <span style={{ fontSize: 12, color: "var(--stone)" }}>
-                      <strong style={{ color: "var(--charcoal)", fontWeight: 600 }}>{m.val}</strong> {m.label}
-                    </span>
-                  </div>
-                ))}
-              </div>
-              {meal.tip && (
-                <div style={{ marginTop: 10, padding: "8px 12px", borderRadius: "var(--radius-xs)", background: "var(--forest-light)", fontSize: 12, color: "var(--forest)", lineHeight: 1.4 }}>
-                  🌿 {meal.tip}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Grocery Tab */}
-      {tab === "grocery" && (
-        <div className="fade-up">
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-            <div>
-              <h3 className="serif" style={{ fontSize: 20, marginBottom: 2 }}>Weekly groceries</h3>
-              <p style={{ fontSize: 12, color: "var(--stone)" }}>Tap items to check them off</p>
-            </div>
-            <span style={{ padding: "5px 12px", borderRadius: 20, fontSize: 12, fontWeight: 600, background: "var(--forest-light)", color: "var(--forest)" }}>
-              {profile.budget} budget
-            </span>
-          </div>
-          {Object.entries(data.grocery || {}).map(([category, items], ci) => (
-            <div key={category} className={`card fade-up stagger-${Math.min(ci + 1, 5)}`} style={{ padding: "18px 20px", marginBottom: 10 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "1px", color: "var(--terra)", marginBottom: 6 }}>{category}</div>
-              {(items || []).map((item, j) => (
-                <GroceryItem key={j} item={item} />
-              ))}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Prep Tab */}
-      {tab === "prep" && (
-        <div className="fade-up">
-          <h3 className="serif" style={{ fontSize: 20, marginBottom: 16 }}>Prep schedule</h3>
-          {(data.prepSchedule || []).map((sched, si) => (
-            <div key={si} className={`card fade-up stagger-${Math.min(si + 1, 3)}`} style={{ padding: "22px 24px", marginBottom: 12 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
-                <div style={{ width: 42, height: 42, borderRadius: 12, background: "linear-gradient(135deg, var(--terra), var(--terra-dark))", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: 18 }}>📅</div>
-                <div>
-                  <div style={{ fontSize: 17, fontWeight: 700 }}>{sched.day}</div>
-                  <div style={{ fontSize: 12, color: "var(--stone)" }}>Total: {sched.totalTime || "~4 hours"}</div>
-                </div>
-              </div>
-              {(sched.tasks || []).map((task, ti) => (
-                <div key={ti} style={{ display: "flex", gap: 14, marginBottom: 2 }}>
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: 16, flexShrink: 0 }}>
-                    <div style={{ width: 10, height: 10, borderRadius: 5, background: "var(--terra)", border: "2.5px solid var(--terra-light)", marginTop: 4, flexShrink: 0 }} />
-                    {ti < sched.tasks.length - 1 && <div style={{ width: 1.5, flex: 1, background: "var(--sand)", margin: "4px 0" }} />}
-                  </div>
-                  <div style={{ flex: 1, paddingBottom: 16 }}>
-                    <div style={{ fontSize: 14, fontWeight: 500, lineHeight: 1.4 }}>{task.task}</div>
-                    <div style={{ display: "flex", gap: 10, marginTop: 4 }}>
-                      <span style={{ fontSize: 12, color: "var(--stone)" }}>{task.time}</span>
-                      <span style={{ fontSize: 11, fontWeight: 600, color: "var(--forest)", background: "var(--forest-light)", padding: "2px 8px", borderRadius: 4 }}>{task.duration}</span>
+            {meals.map((meal, mi) => (
+              <div key={mi} className={`meal-card fade-up stagger-${Math.min(mi + 1, 5)}`}>
+                <div className="meal-header">
+                  <div className="meal-header-left">
+                    <span className="meal-emoji">{MEAL_EMOJIS[meal.time] || "🍽️"}</span>
+                    <div>
+                      <div className="meal-time">{meal.time}</div>
+                      <h3 className="serif meal-name">{meal.name}</h3>
                     </div>
                   </div>
+                  <div className="meal-cal-badge">
+                    <span className="meal-cal-num">{meal.cal}</span>
+                    <span className="meal-cal-unit">kcal</span>
+                  </div>
                 </div>
-              ))}
-            </div>
-          ))}
-        </div>
-      )}
+                <p className="meal-desc">{meal.desc}</p>
+                <div className="meal-macros">
+                  {[
+                    { label: "Protein", val: meal.protein, max: 50, color: "var(--forest)" },
+                    { label: "Carbs", val: meal.carbs, max: 80, color: "var(--terra)" },
+                    { label: "Fat", val: meal.fat, max: 40, color: "var(--amber)" },
+                  ].map((m) => (
+                    <div key={m.label} className="macro-row">
+                      <span className="macro-label">{m.label}</span>
+                      <div className="macro-bar">
+                        <div className="macro-fill" style={{ width: `${Math.min((m.val / m.max) * 100, 100)}%`, background: m.color }} />
+                      </div>
+                      <span className="macro-val">{m.val}g</span>
+                    </div>
+                  ))}
+                </div>
+                {(meal.prep || meal.tip) && (
+                  <div className="meal-footer">
+                    {meal.prep && <span className="meal-prep-tag">⏱ {meal.prep}</span>}
+                    {meal.tip && <span className="meal-tip-text">· {meal.tip}</span>}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
 
-      <div style={{ textAlign: "center", padding: "32px 0 48px", color: "var(--stone)", fontSize: 12 }}>
-        NaijaPrep · AI-Powered Meal Planning for Nigerian Professionals 🇳🇬
+        {/* ── Grocery Tab ── */}
+        {tab === "grocery" && (
+          <div className="fade-up">
+            {/* Progress */}
+            <div className="grocery-progress-card">
+              <span className="grocery-progress-emoji">🛒</span>
+              <div className="grocery-progress-info">
+                <div className="grocery-progress-text">
+                  <span>{checkedCount} of {allGroceryItems.length} items</span>
+                  <span>{allGroceryItems.length > 0 ? Math.round((checkedCount / allGroceryItems.length) * 100) : 0}%</span>
+                </div>
+                <div className="grocery-progress-bar">
+                  <div className="grocery-progress-fill" style={{ width: `${allGroceryItems.length > 0 ? (checkedCount / allGroceryItems.length) * 100 : 0}%` }} />
+                </div>
+              </div>
+            </div>
+
+            {Object.entries(data.grocery || {}).map(([category, items], ci) => (
+              <div key={category} className={`fade-up stagger-${Math.min(ci + 1, 5)}`}>
+                <div className="grocery-category-header">
+                  <span>{GROCERY_EMOJIS[category] || "📦"}</span>
+                  <span className="serif">{category}</span>
+                </div>
+                <div className="grocery-list-card">
+                  {(items || []).map((item, j) => {
+                    const parts = parseGroceryItem(item);
+                    return (
+                      <div key={j} className={`grocery-item ${checkedItems[item] ? "checked" : ""}`} onClick={() => toggleGrocery(item)}>
+                        <div className={`grocery-checkbox ${checkedItems[item] ? "checked" : ""}`}>
+                          {checkedItems[item] && <span>✓</span>}
+                        </div>
+                        <span className="grocery-item-name">{parts.name}</span>
+                        {parts.qty && <span className="grocery-item-qty">{parts.qty}</span>}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* ── Prep Tab ── */}
+        {tab === "prep" && (
+          <div className="fade-up">
+            {(data.prepSchedule || []).map((sched, si) => (
+              <div key={si} className={`fade-up stagger-${Math.min(si + 1, 3)}`}>
+                <h3 className="serif prep-day-title">{sched.day}</h3>
+                <div className="prep-timeline">
+                  {(sched.tasks || []).map((task, ti) => (
+                    <div key={ti} className="prep-task">
+                      <div className="prep-dot-col">
+                        <div className="prep-dot" />
+                        {ti < sched.tasks.length - 1 && <div className="prep-line" />}
+                      </div>
+                      <div className="prep-task-card">
+                        <div className="prep-task-header">
+                          <span className="prep-task-time">{task.time}</span>
+                          <span className="prep-task-duration">{task.duration}</span>
+                        </div>
+                        <p className="prep-task-text">{task.task}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Email success toast */}
+        {emailStatus === "sent" && (
+          <div className="toast fade-up">✓ Meal plan delivered to <strong>{user.email}</strong></div>
+        )}
+
+        <div className="footer">NaijaPrep · AI-Powered Meal Planning for Nigerian Professionals 🇳🇬</div>
       </div>
     </div>
   );
 }
 
 
-function GroceryItem({ item }) {
-  const [checked, setChecked] = useState(false);
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 0", borderBottom: "1px solid var(--surface2)", cursor: "pointer", opacity: checked ? 0.4 : 1, transition: "opacity .2s" }} onClick={() => setChecked((c) => !c)}>
-      <div className={`grocery-check ${checked ? "checked" : ""}`}>
-        {checked && <span style={{ fontSize: 12 }}>✓</span>}
-      </div>
-      <span style={{ fontSize: 14, textDecoration: checked ? "line-through" : "none" }}>{item}</span>
-    </div>
-  );
+/* Helper: parse "Chicken breast (2kg)" into { name, qty } */
+function parseGroceryItem(item) {
+  const match = item.match(/^(.+?)\s*\((.+)\)$/);
+  if (match) return { name: match[1].trim(), qty: match[2].trim() };
+  return { name: item, qty: null };
 }
 
 
 /* ═══════════════════════════════════════════════════
-   MAIN APP — ties everything together
+   MAIN APP
    ═══════════════════════════════════════════════════ */
 
 export default function App() {
@@ -522,12 +568,10 @@ export default function App() {
   const [mealData, setMealData] = useState(null);
   const [emailStatus, setEmailStatus] = useState("idle");
 
-  // Called after signup completes
   const handleOnboardingComplete = useCallback(async (userData, profileData) => {
     setUser(userData);
     setProfile(profileData);
     setScreen("loading");
-
     try {
       const { data } = await mealsApi.generate(userData.id, profileData);
       setMealData(data);
@@ -538,12 +582,10 @@ export default function App() {
     }
   }, []);
 
-  // Regenerate a new plan
   const handleRegenerate = useCallback(async () => {
     if (!user || !profile) return;
     setScreen("loading");
     setEmailStatus("idle");
-
     try {
       const { data } = await mealsApi.generate(user.id, profile);
       setMealData(data);
@@ -554,19 +596,26 @@ export default function App() {
     }
   }, [user, profile]);
 
-  // Send meal plan via email
   const handleSendEmail = useCallback(async () => {
     if (!user) return;
     setEmailStatus("sending");
-
     try {
       const { data } = await emailApi.sendPlan(user.id);
       setEmailStatus(data.success ? "sent" : "error");
+      if (data.success) setTimeout(() => setEmailStatus("idle"), 4000);
     } catch (err) {
       console.error("Email error:", err);
       setEmailStatus("error");
     }
   }, [user]);
+
+  const handleLogout = () => {
+    setScreen("onboarding");
+    setUser(null);
+    setProfile(null);
+    setMealData(null);
+    setEmailStatus("idle");
+  };
 
   return (
     <>
@@ -580,6 +629,7 @@ export default function App() {
           onRegenerate={handleRegenerate}
           onSendEmail={handleSendEmail}
           emailStatus={emailStatus}
+          onLogout={handleLogout}
         />
       )}
     </>
