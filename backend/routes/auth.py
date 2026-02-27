@@ -42,8 +42,11 @@ def signup():
     db.session.add(user)
     db.session.commit()
 
-    # Send welcome email (non-blocking — don't fail signup if email fails)
-    send_welcome_email(user)
+    # Send welcome email — don't fail signup if email fails
+    try:
+        send_welcome_email(user)
+    except Exception as e:
+        print(f"Welcome email failed (non-critical): {e}")
 
     return jsonify({
         "message": "Account created",
