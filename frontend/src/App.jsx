@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
-import { authApi, mealsApi, emailApi } from "./services/api";
+import { authApi, mealsApi } from "./services/api";
 
 /* ═══════════════════════════════════════════════════
    CONSTANTS
@@ -324,7 +324,7 @@ function LoadingScreen({ name }) {
    DASHBOARD
    ═══════════════════════════════════════════════════ */
 
-function Dashboard({ data, user, profile, onRegenerate, onSendEmail, emailStatus, onLogout }) {
+function Dashboard({ data, user, profile, onRegenerate, onLogout }) {
   const [tab, setTab] = useState("meals");
   const [dayIdx, setDayIdx] = useState(0);
   const day = DAYS[dayIdx];
@@ -354,9 +354,6 @@ function Dashboard({ data, user, profile, onRegenerate, onSendEmail, emailStatus
           <span className="serif nav-title">NaijaPrep</span>
         </div>
         <div className="nav-actions">
-          <button className="nav-btn" onClick={onSendEmail} disabled={emailStatus === "sending"}>
-            ✉️ {emailStatus === "sent" ? "Sent!" : "Send Plan"}
-          </button>
           <button className="nav-btn" onClick={onRegenerate}>🔄 Regenerate</button>
           <button className="nav-btn-icon" onClick={onLogout} title="Sign out">⎋</button>
         </div>
@@ -537,11 +534,6 @@ function Dashboard({ data, user, profile, onRegenerate, onSendEmail, emailStatus
           </div>
         )}
 
-        {/* Email success toast */}
-        {emailStatus === "sent" && (
-          <div className="toast fade-up">✓ Meal plan delivered to <strong>{user.email}</strong></div>
-        )}
-
         <div className="footer">NaijaPrep · AI-Powered Meal Planning for Nigerian Professionals 🇳🇬</div>
       </div>
     </div>
@@ -566,7 +558,6 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
   const [mealData, setMealData] = useState(null);
-  const [emailStatus, setEmailStatus] = useState("idle");
 
   const handleOnboardingComplete = useCallback(async (userData, profileData) => {
     setUser(userData);
@@ -585,7 +576,6 @@ export default function App() {
   const handleRegenerate = useCallback(async () => {
     if (!user || !profile) return;
     setScreen("loading");
-    setEmailStatus("idle");
     try {
       const { data } = await mealsApi.generate(user.id, profile);
       setMealData(data);
@@ -596,25 +586,11 @@ export default function App() {
     }
   }, [user, profile]);
 
-  const handleSendEmail = useCallback(async () => {
-    if (!user) return;
-    setEmailStatus("sending");
-    try {
-      const { data } = await emailApi.sendPlan(user.id);
-      setEmailStatus(data.success ? "sent" : "error");
-      if (data.success) setTimeout(() => setEmailStatus("idle"), 4000);
-    } catch (err) {
-      console.error("Email error:", err);
-      setEmailStatus("error");
-    }
-  }, [user]);
-
   const handleLogout = () => {
     setScreen("onboarding");
     setUser(null);
     setProfile(null);
     setMealData(null);
-    setEmailStatus("idle");
   };
 
   return (
@@ -627,8 +603,6 @@ export default function App() {
           user={user}
           profile={profile}
           onRegenerate={handleRegenerate}
-          onSendEmail={handleSendEmail}
-          emailStatus={emailStatus}
           onLogout={handleLogout}
         />
       )}
