@@ -23,10 +23,7 @@ app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL")
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 # Allow the React frontend to call the backend
-CORS(app, origins=[
-    "http://localhost:5173",
-    "https://naijaprep-1.onrender.com"
-])
+CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 # Initialize database
 db.init_app(app)
