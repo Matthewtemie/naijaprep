@@ -1,5 +1,6 @@
 from flask import Blueprint, request, jsonify
 from models.user import db, User, MealPlan
+from services.email_service import send_meal_plan_email
 
 email_bp = Blueprint("email", __name__)
 
@@ -18,7 +19,5 @@ def send_plan():
     if not plan:
         return jsonify({"error": "No active meal plan"}), 404
 
-    # SMTP is blocked on Render free tier
-    # TODO: switch to Resend or SendGrid API
-    print(f"Email would be sent to: {user.email}")
-    return jsonify({"success": True, "message": "Email feature coming soon"})
+    result = send_meal_plan_email(user, plan.get_plan())
+    return jsonify(result)

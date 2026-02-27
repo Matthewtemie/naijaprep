@@ -42,9 +42,11 @@ def signup():
     db.session.add(user)
     db.session.commit()
 
-    # Skip welcome email for now — SMTP crashes on Render free tier
-    # TODO: switch to an email API like Resend or SendGrid
-    print(f"User created: {user.email}")
+    # Send welcome email 
+    try:
+        send_welcome_email(user)
+    except Exception as e:
+        print(f"Welcome email failed: {e}")
 
     return jsonify({
         "message": "Account created",

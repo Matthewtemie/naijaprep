@@ -1,18 +1,10 @@
-from flask_mail import Mail, Message
+import resend
 import os
-
-mail = Mail()
 
 
 def configure_mail(app):
-    """Set up Flask-Mail with Gmail credentials."""
-    app.config["MAIL_SERVER"] = "smtp.gmail.com"
-    app.config["MAIL_PORT"] = 587
-    app.config["MAIL_USE_TLS"] = True
-    app.config["MAIL_USERNAME"] = os.getenv("GMAIL_ADDRESS")
-    app.config["MAIL_PASSWORD"] = os.getenv("GMAIL_APP_PASSWORD")
-    app.config["MAIL_DEFAULT_SENDER"] = ("NaijaPrep", os.getenv("GMAIL_ADDRESS"))
-    mail.init_app(app)
+    """Set up Resend API key."""
+    resend.api_key = os.getenv("RESEND_API_KEY")
 
 
 def send_welcome_email(user):
@@ -39,12 +31,15 @@ def send_welcome_email(user):
         </div>
         """
 
-        msg = Message(
-            subject="🍲 Welcome to NaijaPrep!",
-            recipients=[user.email],
-            html=html,
-        )
-        mail.send(msg)
+        params = {
+            "from": "NaijaPrep <onboarding@resend.dev>",
+            "to": [user.email],
+            "subject": "🍲 Welcome to NaijaPrep!",
+            "html": html,
+        }
+
+        r = resend.Emails.send(params)
+        print(f"Welcome email sent: {r}")
         return {"success": True}
 
     except Exception as e:
@@ -58,12 +53,15 @@ def send_meal_plan_email(user, plan_data):
         profile = user.get_profile_dict()
         html = _build_meal_plan_html(plan_data, profile)
 
-        msg = Message(
-            subject="🍲 Your NaijaPrep Weekly Meal Plan",
-            recipients=[user.email],
-            html=html,
-        )
-        mail.send(msg)
+        params = {
+            "from": "NaijaPrep <onboarding@resend.dev>",
+            "to": [user.email],
+            "subject": "🍲 Your NaijaPrep Weekly Meal Plan",
+            "html": html,
+        }
+
+        r = resend.Emails.send(params)
+        print(f"Meal plan email sent: {r}")
         return {"success": True}
 
     except Exception as e:
@@ -76,18 +74,14 @@ def _build_meal_plan_html(data, profile):
     days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 
     h = '<div style="font-family:Helvetica,Arial,sans-serif;max-width:600px;margin:0 auto;background:#FBF7F2;">'
-
-    # Header
     h += '<div style="background:linear-gradient(135deg,#C4633F 0%,#9E4A2A 50%,#1B4332 100%);padding:36px 32px;text-align:center;">'
     h += '<div style="font-size:32px;margin-bottom:8px;">🍲</div>'
     h += '<h1 style="color:white;font-size:24px;margin:0 0 6px;">Your Weekly Meal Plan</h1>'
     h += f'<p style="color:rgba(255,255,255,.8);font-size:13px;margin:0;">'
     h += f'Goal: {profile["fitnessGoal"]} · {profile["mealsPerDay"]} meals/day</p></div>'
-
     h += '<div style="padding:24px 28px;">'
     h += f'<p style="font-size:15px;color:#2D2A26;margin-bottom:20px;">Hi {profile["name"]} 👋 Here\'s your plan for the week.</p>'
 
-    # Daily meals
     for day in days:
         meals = data.get("plan", {}).get(day, [])
         if not meals:
@@ -101,7 +95,6 @@ def _build_meal_plan_html(data, profile):
             h += f'<span style="font-size:12px;color:#7C7670;"> — {meal.get("cal", 0)} kcal · {meal.get("protein", 0)}g protein</span></div>'
         h += '</div>'
 
-    # Grocery list
     h += '<div style="background:#F5F0EA;border-radius:12px;padding:18px;margin:16px 0;">'
     h += '<h3 style="color:#1B4332;font-size:13px;font-weight:700;margin:0 0 12px;">🛒 GROCERY LIST</h3>'
     for cat, items in data.get("grocery", {}).items():
@@ -110,7 +103,6 @@ def _build_meal_plan_html(data, profile):
             h += f'<div style="font-size:13px;padding:2px 0;">☐ {item}</div>'
     h += '</div>'
 
-    # Weekly tip
     tip = data.get("weeklyTip", "")
     if tip:
         h += f'<div style="background:#D4E7DC;border-radius:12px;padding:14px 18px;margin-bottom:16px;">'
@@ -118,5 +110,4 @@ def _build_meal_plan_html(data, profile):
 
     h += '<p style="text-align:center;font-size:11px;color:#7C7670;margin-top:20px;">NaijaPrep AI · Eat well, perform better 🇳🇬</p>'
     h += '</div></div>'
-
     return h
