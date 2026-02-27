@@ -42,11 +42,9 @@ def signup():
     db.session.add(user)
     db.session.commit()
 
-    # Send welcome email — don't fail signup if email fails
-    try:
-        send_welcome_email(user)
-    except Exception as e:
-        print(f"Welcome email failed (non-critical): {e}")
+    # Skip welcome email for now — SMTP crashes on Render free tier
+    # TODO: switch to an email API like Resend or SendGrid
+    print(f"User created: {user.email}")
 
     return jsonify({
         "message": "Account created",
