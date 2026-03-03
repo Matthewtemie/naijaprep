@@ -64,6 +64,65 @@ const GROCERY_EMOJIS = {
 
 
 /* ═══════════════════════════════════════════════════
+   BODY PROFILE HELPERS
+   ═══════════════════════════════════════════════════ */
+
+const ACTIVITY_MULTIPLIERS = {
+  "Sedentary": 1.2,
+  "Lightly Active": 1.375,
+  "Moderately Active": 1.55,
+  "Very Active": 1.725,
+};
+
+function calcBMI(weightKg, heightCm) {
+  if (!weightKg || !heightCm) return null;
+  const heightM = heightCm / 100;
+  return +(weightKg / (heightM * heightM)).toFixed(1);
+}
+
+function getBMICategory(bmi) {
+  if (!bmi) return { label: "—", color: "var(--stone)" };
+  if (bmi < 18.5) return { label: "Underweight", color: "#3b82f6" };
+  if (bmi < 25) return { label: "Normal", color: "var(--forest)" };
+  if (bmi < 30) return { label: "Overweight", color: "var(--amber)" };
+  return { label: "Obese", color: "var(--terra)" };
+}
+
+function calcBMR(gender, weightKg, heightCm, age) {
+  if (!gender || !weightKg || !heightCm || !age) return null;
+  // Mifflin-St Jeor
+  const base = (10 * weightKg) + (6.25 * heightCm) - (5 * age);
+  return gender === "male" ? base + 5 : base - 161;
+}
+
+function calcTDEE(bmr, activityLevel) {
+  if (!bmr || !activityLevel) return null;
+  return Math.round(bmr * (ACTIVITY_MULTIPLIERS[activityLevel] || 1.2));
+}
+
+function calcCalorieTarget(tdee, fitnessGoal) {
+  if (!tdee) return null;
+  if (fitnessGoal === "Lose Weight") return tdee - 500;
+  if (fitnessGoal === "Build Muscle") return tdee + 300;
+  return tdee;
+}
+
+function calcMacros(calories, fitnessGoal) {
+  if (!calories) return null;
+  let proteinPct, carbsPct, fatPct;
+  if (fitnessGoal === "Lose Weight") { proteinPct = 0.35; carbsPct = 0.35; fatPct = 0.30; }
+  else if (fitnessGoal === "Build Muscle") { proteinPct = 0.35; carbsPct = 0.40; fatPct = 0.25; }
+  else if (fitnessGoal === "Boost Energy") { proteinPct = 0.25; carbsPct = 0.50; fatPct = 0.25; }
+  else { proteinPct = 0.30; carbsPct = 0.40; fatPct = 0.30; }
+  return {
+    protein: Math.round((calories * proteinPct) / 4),
+    carbs: Math.round((calories * carbsPct) / 4),
+    fat: Math.round((calories * fatPct) / 9),
+  };
+}
+
+
+/* ═══════════════════════════════════════════════════
    ONBOARDING
    ═══════════════════════════════════════════════════ */
 
@@ -72,6 +131,7 @@ function Onboarding({ onComplete }) {
   const [f, setF] = useState({
     name: "", email: "", password: "",
     dietaryRestrictions: [], allergies: [],
+    gender: "", age: "", weightKg: "", heightCm: "",
     fitnessGoal: "", activityLevel: "",
     mealsPerDay: 3, budget: "Moderate",
     prepDays: ["Sunday"], wakeTime: "06:30",
@@ -90,7 +150,8 @@ function Onboarding({ onComplete }) {
   const valid = () => {
     if (step === 0) return f.name.trim().length >= 2 && f.email.includes("@") && f.password.length >= 6;
     if (step === 1) return true;
-    if (step === 2) return f.fitnessGoal && f.activityLevel;
+    if (step === 2) return f.gender && f.age && f.weightKg && f.heightCm;
+    if (step === 3) return f.fitnessGoal && f.activityLevel;
     return f.prepDays.length > 0;
   };
 
@@ -98,15 +159,35 @@ function Onboarding({ onComplete }) {
     setLoading(true);
     setError("");
     try {
-      const { data } = await authApi.signup(f);
-      onComplete(data.user, data.profile);
+      // Compute body metrics before sending
+      const bmr = calcBMR(f.gender, Number(f.weightKg), Number(f.heightCm), Number(f.age));
+      const tdee = calcTDEE(bmr, f.activityLevel);
+      const calorieTarget = calcCalorieTarget(tdee, f.fitnessGoal);
+      const bmi = calcBMI(Number(f.weightKg), Number(f.heightCm));
+      const macros = calcMacros(calorieTarget, f.fitnessGoal);
+
+      const enrichedProfile = {
+        ...f,
+        bmr: Math.round(bmr),
+        tdee,
+        calorieTarget,
+        bmi,
+        macros,
+      };
+
+      const { data } = await authApi.signup(enrichedProfile);
+      onComplete(data.user, enrichedProfile);
     } catch (err) {
       setError(err.response?.data?.error || "Something went wrong");
       setLoading(false);
     }
   };
 
-  const stepLabels = ["Account", "Dietary", "Fitness", "Schedule"];
+  const stepLabels = ["Account", "Dietary", "Body", "Fitness", "Schedule"];
+
+  // Live BMI preview for body profile step
+  const liveBMI = calcBMI(Number(f.weightKg), Number(f.heightCm));
+  const bmiCat = getBMICategory(liveBMI);
 
   const steps = [
     // Step 0: Account
@@ -159,8 +240,79 @@ function Onboarding({ onComplete }) {
       </div>
     </div>,
 
-    // Step 2: Fitness
+    // Step 2: Body Profile
     <div key="s2" className="fade-up">
+      <h2 className="serif step-title">Body Profile</h2>
+      <p className="step-subtitle">Help us calculate your ideal nutrition</p>
+      <div className="form-stack">
+        <div>
+          <label className="label">Gender</label>
+          <div className="chip-grid">
+            {[
+              { id: "male", label: "Male", emoji: "♂️" },
+              { id: "female", label: "Female", emoji: "♀️" },
+            ].map((g) => (
+              <div key={g.id} className={`chip-emoji ${f.gender === g.id ? "active" : ""}`} onClick={() => update("gender", g.id)}>
+                <span className="chip-icon">{g.emoji}</span>{g.label}
+              </div>
+            ))}
+          </div>
+        </div>
+        <div>
+          <label className="label">Age</label>
+          <input
+            className="input" type="number" placeholder="e.g. 28"
+            min="15" max="80"
+            value={f.age} onChange={(e) => update("age", e.target.value)}
+          />
+        </div>
+        <div className="body-measurements-row">
+          <div className="body-measure-field">
+            <label className="label">Weight (kg)</label>
+            <input
+              className="input" type="number" placeholder="e.g. 70"
+              min="30" max="250"
+              value={f.weightKg} onChange={(e) => update("weightKg", e.target.value)}
+            />
+          </div>
+          <div className="body-measure-field">
+            <label className="label">Height (cm)</label>
+            <input
+              className="input" type="number" placeholder="e.g. 170"
+              min="120" max="230"
+              value={f.heightCm} onChange={(e) => update("heightCm", e.target.value)}
+            />
+          </div>
+        </div>
+
+        {/* Live BMI Preview */}
+        {liveBMI && (
+          <div className="bmi-preview">
+            <div className="bmi-preview-header">
+              <span className="bmi-preview-label">Your BMI</span>
+              <span className="bmi-preview-value" style={{ color: bmiCat.color }}>{liveBMI}</span>
+            </div>
+            <div className="bmi-bar-track">
+              <div className="bmi-bar-zone bmi-under" />
+              <div className="bmi-bar-zone bmi-normal" />
+              <div className="bmi-bar-zone bmi-over" />
+              <div className="bmi-bar-zone bmi-obese" />
+              <div
+                className="bmi-bar-indicator"
+                style={{ left: `${Math.min(Math.max(((liveBMI - 14) / 26) * 100, 0), 100)}%` }}
+              />
+            </div>
+            <div className="bmi-bar-labels">
+              <span>Underweight</span><span>Normal</span><span>Overweight</span><span>Obese</span>
+            </div>
+            <div className="bmi-category" style={{ color: bmiCat.color }}>{bmiCat.label}</div>
+          </div>
+        )}
+      </div>
+    </div>,
+
+    // Step 3: Fitness
+    <div key="s3" className="fade-up">
       <h2 className="serif step-title">Fitness</h2>
       <p className="step-subtitle">What's your goal?</p>
       <div className="goal-grid">
@@ -180,8 +332,8 @@ function Onboarding({ onComplete }) {
       </div>
     </div>,
 
-    // Step 3: Schedule
-    <div key="s3" className="fade-up">
+    // Step 4: Schedule
+    <div key="s4" className="fade-up">
       <h2 className="serif step-title">Schedule</h2>
       <p className="step-subtitle">When do you cook?</p>
       <label className="label">Meals per day</label>
@@ -262,11 +414,11 @@ function Onboarding({ onComplete }) {
               <button className="btn-back" onClick={() => setStep((s) => s - 1)}>‹ Back</button>
             )}
             <button
-              className={step === 3 ? "btn-generate" : "btn-next"}
+              className={step === 4 ? "btn-generate" : "btn-next"}
               disabled={!valid() || loading}
-              onClick={() => (step === 3 ? handleSubmit() : setStep((s) => s + 1))}
+              onClick={() => (step === 4 ? handleSubmit() : setStep((s) => s + 1))}
             >
-              {loading ? "Creating..." : step === 3 ? "Generate My Plan ✦" : "Next ›"}
+              {loading ? "Creating..." : step === 4 ? "Generate My Plan ✦" : "Next ›"}
             </button>
           </div>
         </div>
@@ -334,7 +486,10 @@ function Dashboard({ data, user, profile, onRegenerate, onLogout }) {
     (a, m) => ({ cal: a.cal + (m.cal || 0), protein: a.protein + (m.protein || 0), carbs: a.carbs + (m.carbs || 0), fat: a.fat + (m.fat || 0) }),
     { cal: 0, protein: 0, carbs: 0, fat: 0 }
   );
-  const maxCal = data.dailyCals || 2200;
+  const maxCal = profile.calorieTarget || data.dailyCals || 2200;
+  const bmi = profile.bmi;
+  const bmiCat = getBMICategory(bmi);
+  const macros = profile.macros;
 
   // Count total grocery items
   const allGroceryItems = Object.values(data.grocery || {}).flat();
@@ -364,7 +519,7 @@ function Dashboard({ data, user, profile, onRegenerate, onLogout }) {
         <div className="hero-overlay">
           <p className="hero-welcome">Welcome back, {user.name} 👋</p>
           <h1 className="serif hero-title">Your Weekly Meal Plan</h1>
-          <p className="hero-meta">{profile.fitnessGoal} · {profile.mealsPerDay} meals/day</p>
+          <p className="hero-meta">{profile.fitnessGoal} · {profile.mealsPerDay} meals/day{profile.tdee ? ` · TDEE ${profile.tdee} kcal` : ""}</p>
           <div className="hero-stats">
             <div className="stat-card">
               <div className="stat-label"><span className="stat-emoji">🎯</span> Daily Target</div>
@@ -378,11 +533,23 @@ function Dashboard({ data, user, profile, onRegenerate, onLogout }) {
                 <div className="stat-progress-fill" style={{ width: `${Math.min((totals.cal / maxCal) * 100, 100)}%` }} />
               </div>
             </div>
-            <div className="stat-card">
-              <div className="stat-label"><span className="stat-emoji">🌿</span> Protein</div>
-              <div className="stat-value">{totals.protein}g</div>
-              <div className="stat-unit">today</div>
-            </div>
+            {bmi && (
+              <div className="stat-card">
+                <div className="stat-label"><span className="stat-emoji">📏</span> BMI</div>
+                <div className="stat-value" style={{ color: bmiCat.color }}>{bmi}</div>
+                <div className="stat-unit">{bmiCat.label}</div>
+              </div>
+            )}
+            {macros && (
+              <div className="stat-card">
+                <div className="stat-label"><span className="stat-emoji">🌿</span> Macros</div>
+                <div className="stat-macros-row">
+                  <span className="stat-macro"><b>{macros.protein}g</b> P</span>
+                  <span className="stat-macro"><b>{macros.carbs}g</b> C</span>
+                  <span className="stat-macro"><b>{macros.fat}g</b> F</span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

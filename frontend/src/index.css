@@ -180,6 +180,41 @@ a { color: inherit; text-decoration: none; }
 
 
 /* ═══════════════════════════════════════════════════
+   BODY PROFILE STEP
+   ═══════════════════════════════════════════════════ */
+
+.body-measurements-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.body-measure-field { display: flex; flex-direction: column; }
+
+.bmi-preview {
+  margin-top: 8px; padding: 18px 20px; border-radius: var(--radius);
+  background: var(--surface2); border: 1px solid var(--sand);
+  animation: fadeUp .4s cubic-bezier(.16,1,.3,1) forwards;
+}
+.bmi-preview-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.bmi-preview-label { font-size: 13px; font-weight: 600; color: var(--charcoal); }
+.bmi-preview-value { font-size: 28px; font-weight: 700; font-family: var(--serif); }
+
+.bmi-bar-track {
+  display: flex; height: 8px; border-radius: 4px; overflow: hidden; position: relative; margin-bottom: 6px;
+}
+.bmi-bar-zone { flex: 1; }
+.bmi-under { background: #93c5fd; }
+.bmi-normal { background: #86efac; }
+.bmi-over { background: #fcd34d; }
+.bmi-obese { background: #fca5a5; }
+.bmi-bar-indicator {
+  position: absolute; top: -3px; width: 4px; height: 14px;
+  background: var(--charcoal); border-radius: 2px;
+  transform: translateX(-50%); transition: left .4s cubic-bezier(.16,1,.3,1);
+  box-shadow: 0 1px 4px rgba(0,0,0,.2);
+}
+.bmi-bar-labels { display: flex; justify-content: space-between; }
+.bmi-bar-labels span { font-size: 10px; color: var(--stone); }
+.bmi-category { text-align: center; margin-top: 8px; font-size: 13px; font-weight: 700; }
+
+
+/* ═══════════════════════════════════════════════════
    LOADING SCREEN
    ═══════════════════════════════════════════════════ */
 
@@ -265,6 +300,9 @@ a { color: inherit; text-decoration: none; }
 .stat-unit { font-size: 12px; color: rgba(255,255,255,.6); margin-top: 2px; }
 .stat-progress-bar { height: 4px; background: rgba(255,255,255,.15); border-radius: 2px; margin-top: 8px; overflow: hidden; }
 .stat-progress-fill { height: 100%; background: var(--terra); border-radius: 2px; transition: width .6s; }
+.stat-macros-row { display: flex; gap: 10px; margin-top: 6px; }
+.stat-macro { font-size: 13px; color: rgba(255,255,255,.85); }
+.stat-macro b { font-size: 16px; color: white; font-weight: 700; }
 
 /* Content area */
 .dash-content { max-width: 780px; margin: 0 auto; padding: 20px 24px 60px; }
