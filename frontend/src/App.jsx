@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
-import { authApi, mealsApi } from "./services/api";
+import { mealsApi } from "./services/api";
 
 /* ═══════════════════════════════════════════════════
    CONSTANTS
@@ -129,7 +129,7 @@ function calcMacros(calories, fitnessGoal) {
 function Onboarding({ onComplete }) {
   const [step, setStep] = useState(0);
   const [f, setF] = useState({
-    name: "", email: "", password: "",
+    name: "",
     dietaryRestrictions: [], allergies: [],
     gender: "", age: "", weightKg: "", heightCm: "",
     fitnessGoal: "", activityLevel: "",
@@ -148,7 +148,7 @@ function Onboarding({ onComplete }) {
     }));
 
   const valid = () => {
-    if (step === 0) return f.name.trim().length >= 2 && f.email.includes("@") && f.password.length >= 6;
+    if (step === 0) return f.name.trim().length >= 2;
     if (step === 1) return true;
     if (step === 2) return f.gender && f.age && f.weightKg && f.heightCm;
     if (step === 3) return f.fitnessGoal && f.activityLevel;
@@ -175,15 +175,15 @@ function Onboarding({ onComplete }) {
         macros,
       };
 
-      const { data } = await authApi.signup(enrichedProfile);
-      onComplete(data.user, enrichedProfile);
+      const user = { id: Date.now(), name: f.name };
+      onComplete(user, enrichedProfile);
     } catch (err) {
-      setError(err.response?.data?.error || "Something went wrong");
+      setError("Something went wrong. Please try again.");
       setLoading(false);
     }
   };
 
-  const stepLabels = ["Account", "Dietary", "Body", "Fitness", "Schedule"];
+  const stepLabels = ["Welcome", "Dietary", "Body", "Fitness", "Schedule"];
 
   // Live BMI preview for body profile step
   const liveBMI = calcBMI(Number(f.weightKg), Number(f.heightCm));
@@ -192,20 +192,12 @@ function Onboarding({ onComplete }) {
   const steps = [
     // Step 0: Account
     <div key="s0" className="fade-up">
-      <h2 className="serif step-title">Account</h2>
+      <h2 className="serif step-title">Welcome</h2>
       <p className="step-subtitle">Let's get to know you</p>
       <div className="form-stack">
         <div>
           <label className="label">Your Name</label>
           <input className="input" placeholder="e.g. Adaeze" value={f.name} onChange={(e) => update("name", e.target.value)} />
-        </div>
-        <div>
-          <label className="label">Email Address</label>
-          <input className="input" type="email" placeholder="adaeze@email.com" value={f.email} onChange={(e) => update("email", e.target.value)} />
-        </div>
-        <div>
-          <label className="label">Password</label>
-          <input className="input" type="password" placeholder="6+ characters" value={f.password} onChange={(e) => update("password", e.target.value)} />
         </div>
       </div>
     </div>,
