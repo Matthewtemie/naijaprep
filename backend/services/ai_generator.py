@@ -20,54 +20,32 @@ def generate_meal_plan(profile):
     if macros:
         macros_line = f"- Macro targets: {macros.get('protein', '')}g protein, {macros.get('carbs', '')}g carbs, {macros.get('fat', '')}g fat"
 
-    prompt = f"""You are NaijaPrep, a Nigerian meal planning AI.
+    prompt = f"""Generate a 7-day Nigerian meal plan as JSON.
 
-Generate a 7-day meal plan. Profile:
-- Goal: {profile.get('fitnessGoal', 'Stay Healthy')}
-- Activity: {profile.get('activityLevel', 'Moderately Active')}
-- Meals/day: {profile.get('mealsPerDay', 3)}
-- Restrictions: {', '.join(profile.get('dietaryRestrictions', [])) or 'None'}
-- Allergies: {', '.join(profile.get('allergies', [])) or 'None'}
-- Cuisine: {', '.join(profile.get('preferredCuisine', ['Traditional Nigerian']))}
-- Budget: {profile.get('budget', 'Moderate')}
-- Prep days: {', '.join(profile.get('prepDays', ['Sunday']))}
+Profile: Goal={profile.get('fitnessGoal', 'Stay Healthy')}, Activity={profile.get('activityLevel', 'Moderately Active')}, Meals/day={profile.get('mealsPerDay', 3)}, Restrictions={', '.join(profile.get('dietaryRestrictions', [])) or 'None'}, Allergies={', '.join(profile.get('allergies', [])) or 'None'}, Cuisine={', '.join(profile.get('preferredCuisine', ['Traditional Nigerian']))}, Budget={profile.get('budget', 'Moderate')}
 {calorie_line}
 {macros_line}
 
-RESPOND ONLY WITH VALID JSON. No markdown, no backticks.
-Structure:
+Return ONLY valid JSON, no markdown/backticks. Keep descriptions under 10 words. Keep tips under 10 words.
 {{
   "plan": {{
-    "Monday": [{{"time":"Breakfast","name":"Dish","desc":"Short desc","cal":350,"protein":15,"carbs":40,"fat":12,"prep":"15 min","tip":"Tip"}}],
-    "Tuesday": [...], "Wednesday": [...], "Thursday": [...],
-    "Friday": [...], "Saturday": [...], "Sunday": [...]
+    "Monday": [{{"time":"Breakfast","name":"Dish","desc":"Short desc","cal":350,"protein":15,"carbs":40,"fat":12,"prep":"15 min","tip":"Short tip"}}],
+    "Tuesday":[...],"Wednesday":[...],"Thursday":[...],"Friday":[...],"Saturday":[...],"Sunday":[...]
   }},
   "grocery": {{
-    "Proteins": ["Chicken breast (2kg)"],
-    "Grains & Starches": ["Rice (5kg)"],
-    "Vegetables & Greens": ["Spinach (3 bunches)"],
-    "Oils & Seasonings": ["Palm oil (1 bottle)"],
-    "Soup Essentials": ["Egusi (2 cups)"],
-    "Snacks & Extras": ["Groundnuts (2 cups)"]
+    "Proteins":["item (qty)"],"Grains & Starches":["item (qty)"],"Vegetables & Greens":["item (qty)"],"Oils & Seasonings":["item (qty)"],"Soup Essentials":["item (qty)"],"Snacks & Extras":["item (qty)"]
   }},
-  "prepSchedule": [{{
-    "day": "Sunday", "totalTime": "4 hours",
-    "tasks": [{{"time":"8:00 AM","task":"Blend pepper mix","duration":"25 min"}}]
-  }}],
+  "prepSchedule": [{{"day":"Sunday","totalTime":"4 hours","tasks":[{{"time":"8:00 AM","task":"Task desc","duration":"25 min"}}]}}],
   "weeklyTip": "One tip",
   "dailyCals": {calorie_target or 2000}
 }}
-
-Rules:
-- ONLY authentic Nigerian dishes
-- Each day: exactly {profile.get('mealsPerDay', 3)} meals
-- Respect all restrictions and allergies
-- Grocery for 1 person, 7 days"""
+Use ONLY authentic Nigerian dishes. Each day={profile.get('mealsPerDay', 3)} meals. Vary dishes across days."""
 
     try:
         message = client.messages.create(
             model="claude-haiku-4-5-20251001",
-            max_tokens=3000,
+            max_tokens=4096,
+            temperature=0.9,
             messages=[{"role": "user", "content": prompt}],
         )
 
@@ -75,6 +53,13 @@ Rules:
         for block in message.content:
             if block.type == "text":
                 text += block.text
+
+        # Detect truncated response
+        if message.stop_reason == "max_tokens":
+            print(f"Response truncated at max_tokens ({len(text)} chars)")
+            del text, message
+            gc.collect()
+            return {"success": False, "error": "Response truncated"}
 
         clean = text.replace("```json", "").replace("```", "").strip()
         plan = json.loads(clean)
