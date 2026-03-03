@@ -10,8 +10,6 @@ class User(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
-    email = db.Column(db.String(120), unique=True, nullable=False)
-    password_hash = db.Column(db.String(256), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     # Profile fields stored as JSON strings
@@ -26,8 +24,11 @@ class User(db.Model):
     lunch_break = db.Column(db.String(10), default="30")
     preferred_cuisine = db.Column(db.Text, default='["Traditional Nigerian"]')
 
-    # Email preferences
-    email_notifications = db.Column(db.Boolean, default=True)
+    # Body profile fields
+    gender = db.Column(db.String(10), default="")
+    age = db.Column(db.String(5), default="")
+    weight_kg = db.Column(db.String(10), default="")
+    height_cm = db.Column(db.String(10), default="")
 
     # Relationships
     meal_plans = db.relationship("MealPlan", backref="user", lazy=True)
@@ -36,7 +37,6 @@ class User(db.Model):
         """Convert user profile to a dictionary for the AI prompt."""
         return {
             "name": self.name,
-            "email": self.email,
             "dietaryRestrictions": json.loads(self.dietary_restrictions),
             "allergies": json.loads(self.allergies),
             "fitnessGoal": self.fitness_goal,
@@ -47,6 +47,10 @@ class User(db.Model):
             "wakeTime": self.wake_time,
             "lunchBreak": self.lunch_break,
             "preferredCuisine": json.loads(self.preferred_cuisine),
+            "gender": self.gender,
+            "age": self.age,
+            "weightKg": self.weight_kg,
+            "heightCm": self.height_cm,
         }
 
 

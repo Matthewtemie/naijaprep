@@ -6,8 +6,13 @@ def fallback_plan(profile):
     goal = profile.get("fitnessGoal", "Stay Healthy")
     meals_per_day = profile.get("mealsPerDay", 3)
 
-    # Calorie multiplier based on goal
-    if goal == "Lose Weight":
+    # Use computed calorie target from body profile if available
+    calorie_target = profile.get("calorieTarget")
+
+    if calorie_target:
+        daily_cals = calorie_target
+        gm = daily_cals / 2100  # scale relative to baseline
+    elif goal == "Lose Weight":
         gm = 0.8
         daily_cals = 1800
     elif goal == "Build Muscle":

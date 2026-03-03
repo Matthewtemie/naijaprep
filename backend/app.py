@@ -9,20 +9,17 @@ from dotenv import load_dotenv
 from models.user import db
 from routes.auth import auth_bp
 from routes.meals import meals_bp
-from routes.email import email_bp
-from services.email_service import configure_mail
 
 load_dotenv()
 
 app = Flask(__name__)
-app.config["SECRET_KEY"] = os.getenv("FLASK_SECRET_KEY")
+app.config["SECRET_KEY"] = os.getenv("FLASK_SECRET_KEY", "dev-secret-key")
 app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL")
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 CORS(app)
 
 
-# Manually add CORS headers to EVERY response
 @app.after_request
 def add_cors_headers(response):
     response.headers["Access-Control-Allow-Origin"] = "*"
@@ -32,11 +29,9 @@ def add_cors_headers(response):
 
 
 db.init_app(app)
-configure_mail(app)
 
 app.register_blueprint(auth_bp, url_prefix="/api/auth")
 app.register_blueprint(meals_bp, url_prefix="/api/meals")
-app.register_blueprint(email_bp, url_prefix="/api/email")
 
 with app.app_context():
     db.create_all()
